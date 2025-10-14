@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstaSpark - AI Caption & Hashtag Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            border-top: 5px solid #3b82f6; /* Blue accent */
+        }
+        textarea {
+            resize: none;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="app" class="w-full max-w-2xl mx-auto space-y-6">
+
+        <header class="text-center">
+            <h1 class="text-4xl font-extrabold text-gray-900">✨ InstaSpark AI Generator</h1>
+            <p class="text-lg text-gray-500 mt-2">Generate engaging captions and relevant hashtags instantly.</p>
+        </header>
+
+        <!-- AdSense Placeholder 1: Top Banner -->
+        <div class="w-full text-center p-2 bg-white rounded-lg border border-gray-200">
+            <p class="text-xs text-blue-500 mb-1">AdSense Ad Unit (Place code here)</p>
+            <!-- REPLACE THIS ENTIRE DIV with your AdSense INS tag -->
+            <div class="h-16 w-full flex items-center justify-center text-gray-400 border border-dashed border-gray-300 rounded">
+                 <p class="text-sm">Top Banner Ad</p>
+            </div>
+            <!-- End AdSense Placeholder -->
+        </div>
+
+        <div class="card bg-white p-6 sm:p-8 rounded-xl space-y-6">
+            
+            <!-- Input Area -->
+            <div>
+                <label for="post-description" class="block text-sm font-medium text-gray-700 mb-2">1. Describe Your Post/Image Topic:</label>
+                <textarea id="post-description" rows="3" placeholder="Example: My cat sleeping in a sunbeam with a perfect shadow."
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-800"></textarea>
+            </div>
+
+            <!-- Tone Selector (Optional Guide for LLM) -->
+            <div>
+                <label for="post-tone" class="block text-sm font-medium text-gray-700 mb-2">2. Select the Desired Tone:</label>
+                <select id="post-tone" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="Engaging and Friendly">Engaging and Friendly (Default)</option>
+                    <option value="Inspirational and Thought-provoking">Inspirational and Thought-provoking</option>
+                    <option value="Humorous and Witty">Humorous and Witty</option>
+                    <option value="Informational and Educational">Informational and Educational</option>
+                </select>
+            </div>
+
+            <!-- Generate Button -->
+            <button id="generate-btn" onclick="generateContent()" 
+                    class="w-full p-4 rounded-xl bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition flex items-center justify-center disabled:opacity-50">
+                Generate Content
+            </button>
+            
+            <!-- Output Area -->
+            <div id="output-section" class="hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Generated Spark:</h2>
+
+                <div id="caption-output" class="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h3 class="font-semibold text-blue-800 mb-1">Caption:</h3>
+                    <p id="caption-text" class="text-gray-800 whitespace-pre-line"></p>
+                    <button onclick="copyToClipboard('caption-text')" class="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium">Copy Caption</button>
+                </div>
+
+                <div id="hashtag-output" class="bg-green-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-green-800 mb-1">Hashtags:</h3>
+                    <p id="hashtag-text" class="text-gray-800 whitespace-pre-line"></p>
+                    <button onclick="copyToClipboard('hashtag-text')" class="mt-2 text-xs text-green-600 hover:text-green-800 font-medium">Copy Hashtags</button>
+                </div>
+            </div>
+
+            <!-- Error/Status Message -->
+            <div id="status-message" class="text-center text-red-500 text-sm hidden"></div>
+
+        </div>
+
+        <!-- AdSense Placeholder 2: Bottom Ad -->
+        <div class="w-full text-center p-2 bg-white rounded-lg border border-gray-200">
+            <p class="text-xs text-blue-500 mb-1">AdSense Ad Unit (Place code here)</p>
+            <!-- REPLACE THIS ENTIRE DIV with your AdSense INS tag -->
+            <div class="h-16 w-full flex items-center justify-center text-gray-400 border border-dashed border-gray-300 rounded">
+                 <p class="text-sm">Bottom Ad</p>
+            </div>
+            <!-- End AdSense Placeholder -->
+        </div>
+
+    </div>
+
+    <script>
+        const apiKey = ""; // Leave as empty string
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        const descriptionInput = document.getElementById('post-description');
+        const toneSelector = document.getElementById('post-tone');
+        const generateBtn = document.getElementById('generate-btn');
+        const outputSection = document.getElementById('output-section');
+        const captionText = document.getElementById('caption-text');
+        const hashtagText = document.getElementById('hashtag-text');
+        const statusMessage = document.getElementById('status-message');
+
+        /**
+         * Copies text from a specific element ID to the clipboard.
+         */
+        function copyToClipboard(elementId) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            try {
+                // Use execCommand for broader iframe compatibility
+                const tempInput = document.createElement("textarea");
+                tempInput.value = textToCopy;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                alert("Copied to clipboard!"); // Use simple alert here for feedback
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+                alert("Failed to copy text.");
+            }
+        }
+
+        /**
+         * Generic function to call the Gemini API with exponential backoff.
+         */
+        async function callGeminiApi(systemPrompt, userQuery, maxRetries = 5) {
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                // We use a structured JSON response for easy parsing
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            caption: { type: "STRING", description: "A highly engaging, 2-3 sentence caption." },
+                            hashtags: { type: "STRING", description: "A string of 15 relevant hashtags, separated by spaces." }
+                        }
+                    }
+                }
+            };
+
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429 && attempt < maxRetries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (jsonString) {
+                         return JSON.parse(jsonString);
+                    }
+                    
+                    return null; // Return null if structure is wrong
+
+                } catch (error) {
+                    console.error("Gemini API Error:", error);
+                    if (attempt < maxRetries - 1) {
+                         const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                         await new Promise(resolve => setTimeout(resolve, delay));
+                         continue;
+                    }
+                    return null;
+                }
+            }
+            return null; // Failed after all retries
+        }
+
+        /**
+         * Main function to trigger the generation process.
+         */
+        async function generateContent() {
+            const description = descriptionInput.value.trim();
+            const tone = toneSelector.value;
+            statusMessage.classList.add('hidden');
+            outputSection.classList.add('hidden');
+
+            if (description.length < 10) {
+                statusMessage.textContent = "Please provide a description of at least 10 characters.";
+                statusMessage.classList.remove('hidden');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<div class="loading-spinner"></div> Generating Spark...';
+
+            const systemPrompt = `You are an expert Instagram content strategist. Your goal is to write a highly engaging caption and a list of 15 relevant, optimized hashtags. The tone should be ${tone}. The hashtags must be a mix of niche, medium, and popular tags. The output must be in JSON format.`;
+            const userQuery = `Generate a caption and 15 hashtags for a post described as: "${description}"`;
+
+            const result = await callGeminiApi(systemPrompt, userQuery);
+
+            generateBtn.disabled = false;
+            generateBtn.textContent = 'Generate Content';
+
+            if (result && result.caption && result.hashtags) {
+                captionText.textContent = result.caption;
+                hashtagText.textContent = result.hashtags.replace(/#/g, '\n#').trim(); // Format hashtags for easy copying
+                outputSection.classList.remove('hidden');
+            } else {
+                statusMessage.textContent = "Sorry, failed to generate content. Please try again or refine your description.";
+                statusMessage.classList.remove('hidden');
+            }
+        }
+    </script>
+
+</body>
+</html>
